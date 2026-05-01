@@ -3,45 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gizli Sohbet Odası</title>
+  <title>Gelişmiş Sohbet & Video</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f3f4f6; height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
     input, button { font-family: 'Inter', sans-serif; outline: none; }
     button { cursor: pointer; transition: opacity 0.2s; }
     button:hover { opacity: 0.8; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    /* Scrollbar tasarımı */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
   </style>
 </head>
 <body>
 
 <div id="root"></div>
 
-<!-- ⚠️ FIREBASE CONFIG — Okey oyunundaki aynı bilgileri buraya yapıştır -->
+<!-- ⚠️ FIREBASE CONFIG — Kendi veritabanı bilgilerini buraya yapıştır -->
 <script>
   const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyAd4SwHUeIuPTPPR2uo-Dw93oqduiFBn6k",
-
-  authDomain: "okey-toprak.firebaseapp.com",
-
-  databaseURL: "https://okey-toprak-default-rtdb.europe-west1.firebasedatabase.app",
-
-  projectId: "okey-toprak",
-
-  storageBucket: "okey-toprak.firebasestorage.app",
-
-  messagingSenderId: "886206245042",
-
-  appId: "1:886206245042:web:fe0a21a48306b9de61c1ab",
-
-  measurementId: "G-W647Z30EJE"
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "PROJECT_ID",
+    storageBucket: "PROJECT_ID.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID"
   };
 </script>
 
-<!-- Firebase & React Kütüphaneleri -->
+<!-- Firebase Kütüphaneleri (Database + STORAGE eklendi) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+<!-- PeerJS (WebRTC Görüntülü Sohbet için) -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<!-- React Kütüphaneleri -->
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -51,38 +54,40 @@
 
   // Firebase Başlatma
   let _db = null;
+  let _storage = null;
   let _firebaseReady = false;
   try {
     if (FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('PASTE')) {
       firebase.initializeApp(FIREBASE_CONFIG);
       _db = firebase.database();
+      _storage = firebase.storage();
       _firebaseReady = true;
     }
   } catch (e) {
     console.error("Firebase başlatılamadı:", e);
   }
 
-  // --- GİRİŞ EKRANI (İsim sorma) ---
+  // --- GİRİŞ EKRANI ---
   function LoginScreen({ onLogin }) {
     const [name, setName] = useState('');
     return (
-      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#111827' }}>
-        <div style={{ background: '#1f2937', padding: '40px', borderRadius: '12px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', textAlign: 'center' }}>
-          <h1 style={{ marginBottom: '8px', fontSize: '24px', color: '#60a5fa' }}>Sohbet Odası</h1>
-          <p style={{ marginBottom: '24px', color: '#9ca3af', fontSize: '14px' }}>Arkadaşlarınla konuşmak için bir takma ad gir.</p>
+      <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: '#1e293b', padding: '40px', borderRadius: '16px', width: '90%', maxWidth: '400px', textAlign: 'center', border: '1px solid #334155' }}>
+          <h1 style={{ marginBottom: '8px', fontSize: '24px', color: '#38bdf8' }}>Çay Ocağı Pro</h1>
+          <p style={{ marginBottom: '24px', color: '#94a3b8', fontSize: '14px' }}>Fotoğraf & Görüntülü Sohbet Aktif</p>
           <input 
             type="text" 
             placeholder="İsmin nedir?" 
             value={name} 
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && name.trim() && onLogin(name.trim())}
-            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #374151', background: '#111827', color: 'white', marginBottom: '16px', fontSize: '16px' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '10px', border: '1px solid #475569', background: '#0f172a', color: 'white', marginBottom: '16px', fontSize: '16px' }}
           />
           <button 
             onClick={() => name.trim() && onLogin(name.trim())}
-            style={{ width: '100%', padding: '12px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', fontSize: '16px', fontWeight: '600' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '10px', border: 'none', background: '#0284c7', color: 'white', fontSize: '16px', fontWeight: '600' }}
           >
-            Sohbete Katıl
+            İçeri Gir
           </button>
         </div>
       </div>
@@ -93,110 +98,278 @@
   function ChatScreen({ username, onLogout }) {
     const [messages, setMessages] = useState([]);
     const [text, setText] = useState('');
-    const messagesEndRef = useRef(null);
+    const [uploading, setUploading] = useState(false);
+    
+    // Görüntülü Görüşme State'leri
+    const [onlineUsers, setOnlineUsers] = useState({});
+    const [myPeerId, setMyPeerId] = useState(null);
+    const [peerInstance, setPeerInstance] = useState(null);
+    const [localStream, setLocalStream] = useState(null);
+    const [remoteStream, setRemoteStream] = useState(null);
+    const [isInCall, setIsInCall] = useState(false);
 
-    // Mesajları dinleme
+    const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const myVideoRef = useRef(null);
+    const remoteVideoRef = useRef(null);
+
+    // 1. Veritabanı ve PeerJS Kurulumu
     useEffect(() => {
-      const ref = _db.ref('chats');
-      // Son 50 mesajı getir ve yeni mesajları dinle
-      const listener = ref.limitToLast(50).on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          // Firebase objesini array'e çevir
-          const msgArray = Object.keys(data).map(key => ({
-            id: key,
-            ...data[key]
-          }));
-          setMessages(msgArray);
+      // Mesajları Dinle
+      const msgRef = _db.ref('chats').limitToLast(50);
+      msgRef.on('value', (snap) => {
+        const data = snap.val();
+        setMessages(data ? Object.keys(data).map(k => ({ id: k, ...data[k] })) : []);
+      });
+
+      // Aktif Kullanıcıları Dinle
+      const onlineRef = _db.ref('online');
+      onlineRef.on('value', (snap) => {
+        setOnlineUsers(snap.val() || {});
+      });
+
+      // PeerJS Başlat (Kamera/Ses için köprü)
+      const peer = new Peer();
+      peer.on('open', (id) => {
+        setMyPeerId(id);
+        // Sisteme bağlandığımı bildir
+        const myStatusRef = _db.ref('online/' + username);
+        myStatusRef.set({ peerId: id, timestamp: Date.now() });
+        myStatusRef.onDisconnect().remove(); // Sekmeyi kapatırsam silinir
+      });
+
+      // Biri beni ararsa...
+      peer.on('call', (call) => {
+        const accept = window.confirm("Biri seni görüntülü arıyor! Açmak ister misin?");
+        if (accept) {
+          navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+            setLocalStream(stream);
+            setIsInCall(true);
+            call.answer(stream); // Çağrıyı yanıtla ve kameramı gönder
+            call.on('stream', (remoteVideo) => {
+              setRemoteStream(remoteVideo); // Karşının kamerasını al
+            });
+          }).catch(err => alert("Kamera izni alınamadı!"));
         } else {
-          setMessages([]);
+          call.close();
         }
       });
-      return () => ref.off('value', listener);
-    }, []);
 
-    // Yeni mesaj gelince en alta kaydır
+      setPeerInstance(peer);
+
+      return () => {
+        msgRef.off();
+        onlineRef.off();
+        peer.destroy();
+        _db.ref('online/' + username).remove();
+      };
+    }, [username]);
+
+    // Videoları HTML'e bağlama
+    useEffect(() => {
+      if (myVideoRef.current && localStream) myVideoRef.current.srcObject = localStream;
+      if (remoteVideoRef.current && remoteStream) remoteVideoRef.current.srcObject = remoteStream;
+    }, [localStream, remoteStream]);
+
     useEffect(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Mesaj Gönderme Fonksiyonu
+    // 2. Metin Gönderme
     const sendMessage = async (e) => {
       e.preventDefault();
       if (!text.trim()) return;
-      
-      const newMsg = {
-        text: text.trim(),
-        sender: username,
-        timestamp: Date.now()
-      };
-      
-      setText(''); // Inputu temizle
-      await _db.ref('chats').push(newMsg); // Firebase'e gönder
+      await _db.ref('chats').push({ text: text.trim(), sender: username, timestamp: Date.now() });
+      setText('');
     };
 
-    // Zamanı formatlama (Örn: 14:30)
-    const formatTime = (ts) => {
-      return new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    // 3. Fotoğraf Yükleme (Storage)
+    const handleFileUpload = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) return alert("Fotoğraf 5MB'dan küçük olmalı!");
+
+      setUploading(true);
+      try {
+        // Fotoğrafı paketliyoruz
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // ImgBB'ye gönderiyoruz
+        const IMGBB_API_KEY = "35115506c19847cab95627b37436e3fa"; 
+        
+        const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // ImgBB bize fotoğrafın internet linkini veriyor, biz de bunu Firebase'deki sohbete yazıyoruz!
+          await _db.ref('chats').push({ 
+            imageUrl: data.data.url, 
+            sender: username, 
+            timestamp: Date.now() 
+          });
+        } else {
+          alert("Fotoğraf yüklenemedi: " + data.error.message);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Bağlantı hatası! Fotoğraf gönderilemedi.");
+      }
+      setUploading(false);
+      e.target.value = ''; // Inputu sıfırla
     };
+
+    // 4. Görüntülü Arama Başlatma
+    const startCall = (remotePeerId) => {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
+        setLocalStream(stream);
+        setIsInCall(true);
+        const call = peerInstance.call(remotePeerId, stream);
+        
+        call.on('stream', (remoteVideo) => {
+          setRemoteStream(remoteVideo);
+        });
+      }).catch(err => {
+        alert("Kamera izni reddedildi veya cihaz bulunamadı!");
+      });
+    };
+
+    // Aramayı Kapatma
+    const endCall = () => {
+      if (localStream) localStream.getTracks().forEach(t => t.stop());
+      setLocalStream(null);
+      setRemoteStream(null);
+      setIsInCall(false);
+    };
+
+    const formatTime = (ts) => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', maxWidth: '800px', margin: '0 auto', width: '100%', background: '#1f2937', boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}>
-        {/* Header */}
-        <div style={{ padding: '16px 20px', background: '#111827', borderBottom: '1px solid #374151', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2 style={{ fontSize: '18px', color: '#f3f4f6' }}># genel-sohbet</h2>
-            <span style={{ fontSize: '12px', color: '#10b981' }}>● Canlı Bağlantı</span>
+      <div style={{ display: 'flex', height: '100vh', maxWidth: '1200px', margin: '0 auto', width: '100%', background: '#0f172a' }}>
+        
+        {/* --- SOL TARAF: SOHBET ALANI --- */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e293b' }}>
+          
+          {/* Üst Bilgi */}
+          <div style={{ padding: '16px 20px', background: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 style={{ fontSize: '18px', color: '#f8fafc' }}># genel-sohbet</h2>
+            </div>
+            <button onClick={onLogout} style={{ background: '#7f1d1d', color: '#fca5a5', padding: '6px 12px', borderRadius: '6px', border: 'none', fontSize: '13px' }}>Çıkış Yap</button>
           </div>
-          <button onClick={onLogout} style={{ background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', padding: '6px 12px', borderRadius: '6px', fontSize: '14px' }}>Çıkış</button>
-        </div>
 
-        {/* Mesaj Listesi */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {messages.length === 0 ? (
-            <div style={{ textAlign: 'center', color: '#6b7280', marginTop: '40px' }}>Henüz hiç mesaj yok. İlk yazan sen ol!</div>
-          ) : (
-            messages.map((msg) => {
+          {/* Mesaj Listesi */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {messages.map((msg) => {
               const isMe = msg.sender === username;
               return (
                 <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                  {!isMe && <span style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px', marginLeft: '4px' }}>{msg.sender}</span>}
+                  {!isMe && <span style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', marginLeft: '4px' }}>{msg.sender}</span>}
+                  
                   <div style={{ 
-                    background: isMe ? '#3b82f6' : '#374151', 
-                    color: '#fff', 
-                    padding: '10px 16px', 
+                    background: isMe ? '#0284c7' : '#334155', 
+                    color: '#f8fafc', 
+                    padding: msg.imageUrl ? '4px' : '10px 16px', 
                     borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                    maxWidth: '80%',
-                    wordBreak: 'break-word'
+                    maxWidth: '75%',
                   }}>
-                    {msg.text}
+                    {msg.imageUrl ? (
+                      <img src={msg.imageUrl} alt="Fotoğraf" style={{ width: '100%', borderRadius: '12px', display: 'block', maxHeight: '300px', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ wordBreak: 'break-word' }}>{msg.text}</span>
+                    )}
                   </div>
-                  <span style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px', marginRight: '4px' }}>{formatTime(msg.timestamp)}</span>
+                  
+                  <span style={{ fontSize: '10px', color: '#475569', marginTop: '4px', marginRight: '4px' }}>{formatTime(msg.timestamp)}</span>
                 </div>
               );
-            })
-          )}
-          <div ref={messagesEndRef} />
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Mesaj & Fotoğraf Gönderme Kutusu */}
+          <form onSubmit={sendMessage} style={{ padding: '16px', background: '#1e293b', display: 'flex', gap: '10px', alignItems: 'center' }}>
+            
+            {/* Gizli Dosya Inputu */}
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
+            
+            <button 
+              type="button" 
+              onClick={() => fileInputRef.current.click()} 
+              disabled={uploading}
+              style={{ background: '#334155', color: 'white', border: 'none', borderRadius: '50%', width: '42px', height: '42px', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Fotoğraf Gönder"
+            >
+              {uploading ? '⏳' : '📷'}
+            </button>
+
+            <input 
+              type="text" 
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Bir şeyler yaz..." 
+              style={{ flex: 1, padding: '12px 16px', borderRadius: '24px', border: '1px solid #475569', background: '#0f172a', color: 'white', fontSize: '15px' }}
+            />
+            <button type="submit" disabled={!text.trim()} style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: '24px', padding: '0 24px', fontWeight: '600', height: '44px' }}>
+              Gönder
+            </button>
+          </form>
         </div>
 
-        {/* Mesaj Gönderme Alanı */}
-        <form onSubmit={sendMessage} style={{ padding: '16px', background: '#111827', borderTop: '1px solid #374151', display: 'flex', gap: '10px' }}>
-          <input 
-            type="text" 
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Bir şeyler yaz..." 
-            style={{ flex: 1, padding: '12px 16px', borderRadius: '24px', border: '1px solid #374151', background: '#1f2937', color: 'white', fontSize: '15px' }}
-          />
-          <button type="submit" disabled={!text.trim()} style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '24px', padding: '0 24px', fontWeight: '600' }}>
-            Gönder
-          </button>
-        </form>
+        {/* --- SAĞ TARAF: KAMERA VE KULLANICILAR --- */}
+        <div style={{ width: '320px', background: '#0f172a', display: 'flex', flexDirection: 'column' }}>
+          
+          {/* Video Paneli */}
+          {isInCall && (
+            <div style={{ padding: '16px', borderBottom: '1px solid #1e293b', background: '#000' }}>
+              <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', background: '#111', borderRadius: '8px', overflow: 'hidden' }}>
+                {/* Karşı Taraf (Büyük) */}
+                <video ref={remoteVideoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* Ben (Küçük) */}
+                <video ref={myVideoRef} autoPlay playsInline muted style={{ position: 'absolute', bottom: '8px', right: '8px', width: '80px', height: '100px', objectFit: 'cover', borderRadius: '6px', border: '2px solid white' }} />
+              </div>
+              <button onClick={endCall} style={{ width: '100%', padding: '10px', marginTop: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }}>📞 Kapat</button>
+            </div>
+          )}
+
+          {/* Aktif Kullanıcılar */}
+          <div style={{ padding: '16px', flex: 1, overflowY: 'auto' }}>
+            <h3 style={{ fontSize: '13px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Aktif Kullanıcılar ({Object.keys(onlineUsers).length})</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {Object.entries(onlineUsers).map(([name, data]) => (
+                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e293b', padding: '10px 14px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }}></div>
+                    <span style={{ fontSize: '14px', color: name === username ? '#38bdf8' : 'white' }}>
+                      {name} {name === username && '(Sen)'}
+                    </span>
+                  </div>
+                  {/* Kendimi arayamam */}
+                  {name !== username && !isInCall && (
+                    <button 
+                      onClick={() => startCall(data.peerId)}
+                      style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Görüntülü Ara"
+                    >
+                      📞
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
       </div>
     );
   }
 
-  // --- ANA UYGULAMA ---
+  // --- ANA BİLEŞEN ---
   function App() {
     const [username, setUsername] = useState(null);
 
@@ -209,10 +382,7 @@
       );
     }
 
-    if (!username) {
-      return <LoginScreen onLogin={setUsername} />;
-    }
-
+    if (!username) return <LoginScreen onLogin={setUsername} />;
     return <ChatScreen username={username} onLogout={() => setUsername(null)} />;
   }
 
